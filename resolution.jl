@@ -143,7 +143,7 @@ function solveDataSet()
                     
                     # Solve it and get the results
                     isOptimal, resolutionTime,solved_blacked = cplexSolve(mat)
-                    writeSolution(outputFile,mat,solved_blacked)
+                    writeSolution(outputFile,mat,solved_blacked,isOptimal, resolutionTime)
                     # If a solution is found, write it
                     if isOptimal
                         # TODO

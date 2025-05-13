@@ -380,7 +380,7 @@ function displaySolution(grid::Matrix{Int}, solution::Matrix{Bool})
     end
 end
 
-function writeSolution(path::AbstractString,grid::Matrix{Int},blacked::Matrix{Bool})
+function writeSolution(path::AbstractString,grid::Matrix{Int},blacked::Matrix{Bool},isOptimal::Bool,time)
     @assert size(grid) == size(blacked) "dimensions différentes"
     open(path, "■") do io
         for i in 1:size(grid,1)
@@ -388,5 +388,8 @@ function writeSolution(path::AbstractString,grid::Matrix{Int},blacked::Matrix{Bo
                    for j in 1:size(grid,2)]
             println(io, join(row, " "))
         end
+        println(io)  
+        println(io, "Temps de résolution : $(time)")
+        println(io, "Statut : ", isOptimal)
     end
 end

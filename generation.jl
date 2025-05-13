@@ -1,5 +1,6 @@
 # This file contains methods to generate a data set of instances (i.e., sudoku grids)
 include("io.jl")
+using Dates
 
 using Random
 
@@ -113,12 +114,37 @@ Generate all the instances
 
 Remark: a grid is generated only if the corresponding output file does not already exist
 """
-function generateDataSet()
 
-    # TODO
-    println("In file generation.jl, in method generateDataSet(), TODO: generate an instance")
-    
+function generateDataSet(
+    n::Int = 5,
+    density::Float64 = 0.2,
+    count::Int = 10,
+    folder::String = "./data/"
+)
+    # Crée le dossier s’il n'existe pas
+    isdir(folder) || mkpath(folder)
+
+    for i in 1:count
+        matrix = generateInstance(n, density)
+
+        # Timestamp avec millisecondes
+        timestamp = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS.sss")
+
+        # Nom du fichier avec n, densité, index et timestamp
+        filename = "instance_$(n)x$(n)_$(round(Int, density*100))pct_$i_$timestamp.txt"
+        filepath = joinpath(folder, filename)
+
+        # Écriture de la matrice dans le fichier
+        open(filepath, "w") do io
+            for row in matrix
+                println(io, join(row, " "))
+            end
+        end
+    end
+
+    println("Instances generes")
 end
+
 
 
 
