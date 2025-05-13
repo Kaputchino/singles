@@ -340,3 +340,54 @@ function resultsArray(outputFile::String)
     close(fout)
     
 end 
+
+
+function displayGrid(matrix::Matrix{Int})
+    rows, cols = size(matrix)
+    cell_width = maximum(length(string(x)) for x in matrix) + 1  # ajuster largeur dynamique
+
+    # Ligne de séparation horizontale
+    function horizontal_line()
+        println("+" * join(["-"^cell_width for _ in 1:cols], "+") * "+")
+    end
+
+    # Affichage de chaque ligne
+    horizontal_line()
+    for i in 1:rows
+        row_str = "|"
+        for j in 1:cols
+            val = string(matrix[i, j])
+            padding = " " ^ (cell_width - length(val))
+            row_str *= padding * val * "|"
+        end
+        println(row_str)
+        horizontal_line()
+    end
+end
+
+function displaySolution(grid::Matrix{Int}, solution::Matrix{Bin})
+    rows, cols = size(grid)
+    cell_width = maximum(length(string(x)) for x in grid) + 1  # ajuster largeur dynamique
+
+    # Ligne de séparation horizontale
+    function horizontal_line()
+        println("+" * join(["-"^cell_width for _ in 1:cols], "+") * "+")
+    end
+
+    # Affichage de chaque ligne
+    horizontal_line()
+    for i in 1:rows
+        row_str = "|"
+        for j in 1:cols
+            if(solution[i,j])
+                val = "■"
+            else
+                val = string(grid[i, j])
+            end
+            padding = " " ^ (cell_width - length(val))
+            row_str *= padding * val * "|"
+        end
+        println(row_str)
+        horizontal_line()
+    end
+end
