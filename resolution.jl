@@ -1,5 +1,6 @@
 # This file contains methods to solve an instance (heuristically or with CPLEX)
-using CPLEX
+using GLPK 
+import MathOptInterface as MOI
 
 include("generation.jl")
 
@@ -8,17 +9,16 @@ TOL = 0.00001
 """
 Solve an instance with CPLEX
 """
-function cplexSolve()
+function cplexSolve(grid::Matrix{Int})
 
     # Create the model
-    m = Model(with_optimizer(CPLEX.Optimizer))
+    model = Model(GLPK.Optimizer)
+    n = size(grid, 1)
+
 
     # TODO
     println("In file resolution.jl, in method cplexSolve(), TODO: fix input and output, define the model")
-    rows = 5
-    cols = 5
     @variable(model, blacked[1:n, 1:n], Bin)   # 1 ↔ noir
-    grid = fill(0, rows, cols)
 
         # 1) Unicité sur chaque ligne
     for i in 1:n
@@ -56,17 +56,16 @@ function cplexSolve()
     end
 
     @objective(model, Min, 0)           # on cherche juste la faisabilité
-
     # Start a chronometer
     start = time()
 
     # Solve the model
-    optimize!(m)
+    optimize!(model)
 
     # Return:
     # 1 - true if an optimum is found
     # 2 - the resolution time
-    return JuMP.primal_status(m) == JuMP.MathOptInterface.FEASIBLE_POINT, time() - start
+    return MOI.get(model, MOI.TerminationStatus()) == MOI.FEASIBLE_POINT || MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL, time() - start, blacked
     
 end
 
@@ -118,7 +117,7 @@ function solveDataSet()
     for file in filter(x->occursin(".txt", x), readdir(dataFolder))  
         
         println("-- Resolution of ", file)
-        readInputFile(dataFolder * file)
+        mat = readInputFile(dataFolder * file)
 
         # TODO
         println("In file resolution.jl, in method solveDataSet(), TODO: read value returned by readInputFile()")
@@ -143,8 +142,8 @@ function solveDataSet()
                     println("In file resolution.jl, in method solveDataSet(), TODO: fix cplexSolve() arguments and returned values")
                     
                     # Solve it and get the results
-                    isOptimal, resolutionTime = cplexSolve()
-                    
+                    isOptimal, resolutionTime,solved_blacked = cplexSolve(mat)
+                    writeSolution(outputFile,mat,solved_blacked)
                     # If a solution is found, write it
                     if isOptimal
                         # TODO

@@ -10,23 +10,11 @@ Read an instance from an input file
 - Argument:
 inputFile: path of the input file
 """
-function readInputFile(inputFile::String)
-
-    # Open the input file
-    datafile = open(inputFile)
-
-    data = readlines(datafile)
-    close(datafile)
-    grid = []
-    # For each line of the input file
-    for line in data
-        row = parse.(Int, split(line))
-        push!(grid, row)
-    end
-    
-    return grid
-
+function readInputFile(inputFile::String)::Matrix{Int}
+    rows = [parse.(Int, split(strip(l))) for l in readlines(inputFile)]
+    return hcat(rows...)'              # ⇒ Matrix{Int64}
 end
+
 
 
 """
@@ -389,5 +377,16 @@ function displaySolution(grid::Matrix{Int}, solution::Matrix{Bool})
         end
         println(row_str)
         horizontal_line()
+    end
+end
+
+function writeSolution(path::AbstractString,grid::Matrix{Int},blacked::Matrix{Bool})
+    @assert size(grid) == size(blacked) "dimensions différentes"
+    open(path, "■") do io
+        for i in 1:size(grid,1)
+            row = [blacked[i,j] ? "X" : string(grid[i,j])
+                   for j in 1:size(grid,2)]
+            println(io, join(row, " "))
+        end
     end
 end
