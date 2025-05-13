@@ -20,10 +20,10 @@ function readInputFile(inputFile::String)
     grid = []
     # For each line of the input file
     for line in data
-
         row = parse.(Int, split(line))
         push!(grid, row)
     end
+    
     return grid
 
 end
@@ -365,7 +365,7 @@ function displayGrid(matrix::Matrix{Int})
     end
 end
 
-function displaySolution(grid::Matrix{Int}, solution::Matrix{Bin})
+function displaySolution(grid::Matrix{Int}, solution::Matrix{Bool})
     rows, cols = size(grid)
     cell_width = maximum(length(string(x)) for x in grid) + 1  # ajuster largeur dynamique
 
