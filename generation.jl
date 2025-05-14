@@ -4,31 +4,19 @@ using Dates
 
 using Random
 
-# un carré latin est techniquement un cas particulier d'un jeux de singles ou il n'y a aucune case à noircir
 function generateLatinSquare(n::Int)
-    # Créer une permutation de base des nombres 1 à n
-    base = collect(1:n)
-    
-    # Créer la première ligne comme une permutation aléatoire
     first_row = randperm(n)
-    
-    # Initialiser la matrice avec la première ligne
     square = [first_row]
-    
-    # Construire les lignes suivantes par décalage circulaire
     for i in 2:n
         new_row = circshift(first_row, i - 1)
         push!(square, new_row)
     end
-
-    # Mélanger les lignes de façon aléatoire (optionnel)
     shuffle!(square)
-
-    # Transposer puis mélanger les colonnes (optionnel)
-    square = permutedims(hcat(square...), randperm(n))
-
+    square = hcat(square...)            # transforme en matrice
+    square = square[:, randperm(n)]     # mélange les colonnes
     return square
 end
+
 
 function modifyMatrixNTimes(matrix::Matrix{Int}, y::Int)
     rows, cols = size(matrix)
@@ -131,14 +119,15 @@ function generateDataSet(
         timestamp = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS.sss")
 
         # Nom du fichier avec n, densité, index et timestamp
-        filename = "instance_$(n)x$(n)_$(round(Int, density*100))pct_$i_$timestamp.txt"
+        filename = "instance_$(n)x$(n)_$(round(Int, density*100))pct_$(i)_$(timestamp).txt"
         filepath = joinpath(folder, filename)
 
         # Écriture de la matrice dans le fichier
         open(filepath, "w") do io
-            for row in matrix
-                println(io, join(row, " "))
+            for i in 1:size(matrix, 1)
+                println(io, join(matrix[i, :], " "))
             end
+
         end
     end
 
