@@ -15,6 +15,43 @@ function readInputFile(inputFile::String)::Matrix{Int}
     return hcat(rows...)'              # ⇒ Matrix{Int64}
 end
 
+function parse_result_file(path::String)
+    lines = readlines(path)
+    time = Inf
+    optimal = false
+    for line in lines
+        if occursin("Temps", line)
+            time = parse(Float64, split(line, ":")[2])
+        elseif occursin("Statut", line)
+            optimal = occursin("true", line)
+        end
+    end
+    return time, optimal
+end
+function read_solution_grid(path::String)::Matrix{Union{Int, Char}}
+    lines = readlines(path)
+    grid = Union{Int, Char}[]  # liste plate à transformer après
+
+    rows = 0
+    cols = 0
+
+    for line in lines
+        if startswith(line, "Temps") || startswith(line, "Statut") || isempty(strip(line))
+            break  # stop at metadata
+        end
+        row = [s == "X" ? 'X' : parse(Int, s) for s in split(line)]
+        cols = length(row)
+        append!(grid, row)
+        rows += 1
+    end
+
+    return permutedims(reshape(grid, cols, rows))
+end
+
+
+
+
+
 
 
 """
@@ -82,20 +119,13 @@ function performanceDiagram(outputFile::String)
             folderCount += 1
             fileCount = 0
 
-            # For each text file in the subfolder
-            for resultFile in filter(x->occursin(".txt", x), readdir(path))
-
-                fileCount += 1
-                include(path * "/" * resultFile)
-
-                if isOptimal
-                    results[folderCount, fileCount] = solveTime
-
-                    if solveTime > maxSolveTime
-                        maxSolveTime = solveTime
-                    end 
-                end 
-            end 
+        time, optimal = parse_result_file(path * "/" * resultFile)
+        if optimal
+            results[folderCount, fileCount] = time
+            if time > maxSolveTime
+                maxSolveTime = time
+            end
+        end
         end
     end 
 
@@ -187,8 +217,8 @@ function resultsArray(outputFile::String)
     subfolderCount = 0
 
     # Open the latex output file
-    fout = open(outputFile, "w")
-
+    fout = open(outputFile, "w", encoding="UTF-8")
+    println("jecris dans le fichier",outputFile)
     # Print the latex file output
     println(fout, raw"""\documentclass{article}
 
@@ -283,7 +313,7 @@ function resultsArray(outputFile::String)
 
     # For each solved files
     for solvedInstance in solvedInstances
-
+        println(solvedInstances)
         # If we do not start a new array on a new page
         if rem(id, maxInstancePerPage) == 0
             println(fout, footer, "\\newpage")
@@ -301,11 +331,13 @@ function resultsArray(outputFile::String)
             # If the instance has been solved by this method
             if isfile(path)
 
-                include(path)
+                solveTime, isOptimal = parse_result_file(path)
+                grid = read_solution_grid(path)
 
                 println(fout, " & ", round(solveTime, digits=2), " & ")
 
                 if isOptimal
+                    println(fout, "\$\\times\$")
                     println(fout, "\$\\times\$")
                 end 
                 
@@ -365,15 +397,15 @@ function displaySolution(grid::Matrix{Int}, solution::Matrix{Bool})
     # Affichage de chaque ligne
     horizontal_line()
     for i in 1:rows
-        row_str = "|"
+        row_str = "I"
         for j in 1:cols
             if(solution[i,j])
-                val = "■"
+                val = "x"
             else
                 val = string(grid[i, j])
             end
             padding = " " ^ (cell_width - length(val))
-            row_str *= padding * val * "|"
+            row_str *= padding * val * "I"
         end
         println(row_str)
         horizontal_line()
@@ -381,8 +413,9 @@ function displaySolution(grid::Matrix{Int}, solution::Matrix{Bool})
 end
 
 function writeSolution(path::AbstractString,grid::Matrix{Int},blacked::Matrix{Bool},isOptimal::Bool,time)
+    print_black(blacked)
     @assert size(grid) == size(blacked) "dimensions différentes"
-    open(path, "■") do io
+    open(path, "w") do io
         for i in 1:size(grid,1)
             row = [blacked[i,j] ? "X" : string(grid[i,j])
                    for j in 1:size(grid,2)]
@@ -391,5 +424,18 @@ function writeSolution(path::AbstractString,grid::Matrix{Int},blacked::Matrix{Bo
         println(io)  
         println(io, "Temps de résolution : $(time)")
         println(io, "Statut : ", isOptimal)
+        #println(io, "solveTime = ", resolutionTime) 
+        #println(io, "isOptimal = ", isOptimal)
+    end
+
+end
+
+function print_black(black::Matrix{Bool})
+    h, w = size(black)
+    for i in 1:h
+        for j in 1:w
+            print(black[i, j] ? "X " : ". ")
+        end
+        println()
     end
 end

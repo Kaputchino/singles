@@ -61,7 +61,7 @@ function cplexSolve(grid::Matrix{Int})
 
     # Solve the model
     optimize!(model)
-    B_bool = [value(blacked[i,j]) > 0.5 for i in 1:size(blacked, 1), j in 1:size(blacked, 2)]
+    B_bool = Matrix{Bool}([value(blacked[i,j]) > 0.5 for i in 1:n, j in 1:n])
 
     print_black_only(B_bool)
     # Return:
@@ -168,7 +168,7 @@ function solveDataSet()
                         println("In file resolution.jl, in method solveDataSet(), TODO: fix heuristicSolve() arguments and returned values")
                         
                         # Solve it and get the results
-                        solved_blacked,isOptimal = solveByHeuristic(grid)
+                        solved_blacked,isOptimal = solveByHeuristic(mat)
 
                         # Stop the chronometer
                         resolutionTime = time() - startingTime
@@ -184,9 +184,9 @@ function solveDataSet()
                     end 
                 end
 
-                println(fout, "solveTime = ", resolutionTime) 
-                println(fout, "isOptimal = ", isOptimal)
-                
+                #println(fout, "solveTime = ", resolutionTime) 
+                #println(fout, "isOptimal = ", isOptimal)
+
                 # TODO
                 println("In file resolution.jl, in method solveDataSet(), TODO: write the solution in fout") 
                 close(fout)
@@ -194,7 +194,8 @@ function solveDataSet()
 
 
             # Display the results obtained with the method on the current instance
-            include(outputFile)
+            solveTime, isOptimal = parse_result_file(outputFile)
+            grid = read_solution_grid(outputFile)
             println(resolutionMethod[methodId], " optimal: ", isOptimal)
             println(resolutionMethod[methodId], " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
         end         
@@ -250,42 +251,58 @@ function propagate_blanks(grid, black)
 end
 
 # Détecte et noircit automatiquement si un chiffre apparaît ≥2 fois et seul 1 peut rester
-function resolve_duplicates(grid, black)
+function resolve_duplicates(grid::Matrix{Int}, black::Matrix{Bool})
     h, w = size(grid)
     changed = false
+
+    function inbounds(i, j)
+        return 1 ≤ i ≤ h && 1 ≤ j ≤ w
+    end
+
+    function can_black(i, j, black, h, w)
+        for (di, dj) in ((0, 1), (1, 0), (0, -1), (-1, 0))
+            ni, nj = i + di, j + dj
+            if 1 ≤ ni ≤ h && 1 ≤ nj ≤ w && black[ni, nj]
+                return false
+            end
+        end
+        return true
+    end
+
+
     # Lignes
     for i in 1:h
         counts = Dict{Int, Vector{Int}}()
         for j in 1:w
             val = grid[i, j]
-            counts[val] = get(counts, val, Int[])  # default empty
-            push!(counts[val], j)
+            push!(get!(counts, val, Int[]), j)
         end
         for (val, js) in counts
             visibles = filter(j -> !black[i, j], js)
-            if length(visibles) == 1
-                for j in js
-                    if j != visibles[1] && !black[i, j]
+            if length(visibles) > 1
+                for j in visibles[2:end]
+                    if can_black(i, j, black, h, w)
                         black[i, j] = true
                         changed = true
                     end
+
                 end
             end
         end
     end
+
     # Colonnes
     for j in 1:w
         counts = Dict{Int, Vector{Int}}()
         for i in 1:h
             val = grid[i, j]
-            counts[val] = get(counts, val, Int[])
-            push!(counts[val], i)
+            push!(get!(counts, val, Int[]), i)
         end
         for (val, is) in counts
             visibles = filter(i -> !black[i, j], is)
-            if length(visibles) == 1
-                for i in is
-                    if i != visibles[1] && !black[i, j]
+            if length(visibles) > 1
+                for i in visibles[2:end]
+                    if can_black(i, j, black, h, w)
                         black[i, j] = true
                         changed = true
                     end
@@ -293,13 +310,15 @@ function resolve_duplicates(grid, black)
             end
         end
     end
+
     return changed
 end
+
 
 # Flood-fill pour vérifier connexité des blancs
 function flood_fill(grid, black)
     h, w = size(grid)
-    visited = falses(h, w)
+    visited = fill(false, h, w)
     found = false
     for i in 1:h, j in 1:w
         if !black[i, j]
@@ -335,9 +354,10 @@ function flood_fill(grid, black)
 end
 
 # Boucle principale de résolution simple
-function solveByHeuristic(grid)
+function solveByHeuristic(grid::Matrix{Int64})
     h, w = size(grid)
-    black = falses(h, w)
+    #visited = fill(false, h, w)
+    black = fill(false, h, w)
     isOptimal = true
     iteration = 0
     while true
