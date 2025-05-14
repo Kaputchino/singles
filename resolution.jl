@@ -46,13 +46,13 @@ function cplexSolve(grid::Matrix{Int})
 
     # 3′) Toute case blanche a au moins un voisin blanc (contrainte tronqué de convexité)
     for i in 1:n, j in 1:n
-        neigh = Tuple{Int,Int}[]
-        i>1 && push!(neigh, (i-1,j))
-        i<n && push!(neigh, (i+1,j))
-        j>1 && push!(neigh, (i,j-1))
-        j<n && push!(neigh, (i,j+1))
+        voisin = Tuple{Int,Int}[]
+        i>1 && push!(voisin, (i-1,j))
+        i<n && push!(voisin, (i+1,j))
+        j>1 && push!(voisin, (i,j-1))
+        j<n && push!(voisin, (i,j+1))
         @constraint(model,
-            blacked[i,j] + sum(1 - blacked[p,q] for (p,q) in neigh) ≥ 1)
+            blacked[i,j] + sum(1 - blacked[p,q] for (p,q) in voisin) ≥ 1)
     end
 
     @objective(model, Min, 0)           # on cherche juste la faisabilité
@@ -61,15 +61,17 @@ function cplexSolve(grid::Matrix{Int})
 
     # Solve the model
     optimize!(model)
-    B_bool = Matrix{Bool}([value(blacked[i,j]) > 0.5 for i in 1:n, j in 1:n])
+    status = MOI.get(model, MOI.TerminationStatus())
 
-    print_black_only(B_bool)
-    # Return:
-    # 1 - true if an optimum is found
-    # 2 - the resolution time
-    # 3 - the grid of blacked element
-    return MOI.get(model, MOI.TerminationStatus()) == MOI.FEASIBLE_POINT || MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL, time() - start, B_bool
-    
+    if status == MOI.OPTIMAL || status == MOI.FEASIBLE_POINT
+        B_bool = Matrix{Bool}([value(blacked[i,j]) > 0.5 for i in 1:n, j in 1:n])
+        print_black_only(B_bool)
+        return true, time() - start, B_bool
+    else
+        println("Pas de solution trouvée par CPLEX (statut = $status)")
+        B_bool = fill(false, n, n)  # ou `falses(n, n)` si tu acceptes un BitMatrix
+        return false, time() - start, B_bool
+    end 
 end
 
 """
@@ -161,8 +163,8 @@ function solveDataSet()
                     # Start a chronometer 
                     startingTime = time()
                     
-                    # While the grid is not solved and less than 100 seconds are elapsed
-                    while !isOptimal && resolutionTime < 100
+                    # While the grid is not solved and less than 30 seconds are elapsed
+                    while !isOptimal && resolutionTime < 30
                         
                         # TODO 
                         println("In file resolution.jl, in method solveDataSet(), TODO: fix heuristicSolve() arguments and returned values")

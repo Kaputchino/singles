@@ -119,7 +119,7 @@ function generateDataSet(
         timestamp = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS.sss")
 
         # Nom du fichier avec n, densité, index et timestamp
-        filename = "instance_$(n)x$(n)_$(round(Int, density*100))pct_$(i)_$(timestamp).txt"
+        filename = "i_$(n)x$(n)_$(round(Int, density*100))pct_$(i)_$(timestamp).txt"
         filepath = joinpath(folder, filename)
 
         # Écriture de la matrice dans le fichier

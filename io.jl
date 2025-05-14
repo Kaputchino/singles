@@ -207,8 +207,8 @@ Prerequisites:
 """
 function resultsArray(outputFile::String)
     
-    resultFolder = "../res/"
-    dataFolder = "../data/"
+    resultFolder = "./res/"
+    dataFolder = "./data/"
     
     # Maximal number of files in a subfolder
     maxSize = 0
@@ -217,7 +217,7 @@ function resultsArray(outputFile::String)
     subfolderCount = 0
 
     # Open the latex output file
-    fout = open(outputFile, "w", encoding="UTF-8")
+    fout = open(outputFile, "w")
     println("jecris dans le fichier",outputFile)
     # Print the latex file output
     println(fout, raw"""\documentclass{article}
@@ -278,7 +278,7 @@ function resultsArray(outputFile::String)
     end
 
     # Only keep one string for each instance solved
-    unique(solvedInstances)
+    solvedInstances = unique(solvedInstances)
 
     # For each resolution method, add two columns in the array
     for folder in folderName
@@ -334,7 +334,7 @@ function resultsArray(outputFile::String)
                 solveTime, isOptimal = parse_result_file(path)
                 grid = read_solution_grid(path)
 
-                println(fout, " & ", round(solveTime, digits=2), " & ")
+                println(fout, " & ", round(solveTime, digits=9), " & ")
 
                 if isOptimal
                     println(fout, "\$\\times\$")
