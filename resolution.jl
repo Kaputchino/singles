@@ -169,7 +169,9 @@ function solveDataSet()
                         
                         # Solve it and get the results
                         solved_blacked,isOptimal = solveByHeuristic(mat)
-
+                        println("nothing crash that far")
+                        writeSolution(outputFile,mat,solved_blacked,isOptimal, resolutionTime)
+                        println("write didn't crash the whole program YEAH")
                         # Stop the chronometer
                         resolutionTime = time() - startingTime
                         
@@ -207,15 +209,90 @@ function inbounds(i, j, h, w)
     return 1 ≤ i ≤ h && 1 ≤ j ≤ w
 end
 
-# Vérifie si deux noirs sont adjacents
-function validate_no_adjacent_blacks(black)
-    h, w = size(black)
-    for i in 1:h, j in 1:w
-        if black[i, j]
-            for (di, dj) in ((0, 1), (1, 0), (0, -1), (-1, 0))
+
+
+function solveByHeuristic(grid::Matrix{Int64})::Tuple{Matrix{Bool}, Bool}
+    n, m = size(grid)
+    is_blacked = fill(false, n, m)
+    has_solution = backtrack!(grid, is_blacked)
+    return is_blacked, has_solution
+end
+
+function backtrack!(grid::Matrix{Int64}, is_blacked::Matrix{Bool})::Bool
+    if !has_duplicates(grid, is_blacked) &&
+       is_valid_black(is_blacked) &&
+       is_white_connected(is_blacked)
+        return true
+    end
+
+    n, m = size(grid)
+    for i in 1:n, j in 1:m
+        if is_blacked[i, j]
+            continue
+        end
+        if has_duplicate_at(grid, is_blacked, i, j)
+            is_blacked[i, j] = true
+            if is_valid_black(is_blacked) && is_white_connected(is_blacked)
+                if backtrack!(grid, is_blacked)
+                    return true
+                end
+            end
+            is_blacked[i, j] = false
+        end
+    end
+    return false
+end
+
+function has_duplicates(grid::Matrix{Int64}, is_blacked::Matrix{Bool})::Bool
+    n, m = size(grid)
+    for i in 1:n
+        seen = Dict{Int64, Bool}()
+        for j in 1:m
+            if !is_blacked[i, j]
+                if haskey(seen, grid[i, j])
+                    return true
+                end
+                seen[grid[i, j]] = true
+            end
+        end
+    end
+    for j in 1:m
+        seen = Dict{Int64, Bool}()
+        for i in 1:n
+            if !is_blacked[i, j]
+                if haskey(seen, grid[i, j])
+                    return true
+                end
+                seen[grid[i, j]] = true
+            end
+        end
+    end
+    return false
+end
+
+function has_duplicate_at(grid::Matrix{Int64}, is_blacked::Matrix{Bool}, i::Int, j::Int)::Bool
+    val = grid[i, j]
+    n, m = size(grid)
+    for k in 1:m
+        if k != j && grid[i, k] == val && !is_blacked[i, k]
+            return true
+        end
+    end
+    for k in 1:n
+        if k != i && grid[k, j] == val && !is_blacked[k, j]
+            return true
+        end
+    end
+    return false
+end
+
+function is_valid_black(is_blacked::Matrix{Bool})::Bool
+    n, m = size(is_blacked)
+    for i in 1:n, j in 1:m
+        if is_blacked[i, j]
+            for (di, dj) in ((1,0), (-1,0), (0,1), (0,-1))
                 ni, nj = i + di, j + dj
-                if inbounds(ni, nj, h, w) && black[ni, nj]
-                    println("Erreur: cases noires adjacentes à ($i,$j) et ($ni,$nj)")
+                if 1 ≤ ni ≤ n && 1 ≤ nj ≤ m && is_blacked[ni, nj]
                     return false
                 end
             end
@@ -224,166 +301,45 @@ function validate_no_adjacent_blacks(black)
     return true
 end
 
-# Propagation : si une case est blanche, toutes les autres identiques dans ligne/colonne → noires
-function propagate_blanks(grid, black)
-    h, w = size(grid)
-    changed = false
-    for i in 1:h, j in 1:w
-        if !black[i, j]
-            val = grid[i, j]
-            # Ligne
-            for jj in 1:w
-                if jj != j && grid[i, jj] == val && !black[i, jj]
-                    black[i, jj] = true
-                    changed = true
-                end
-            end
-            # Colonne
-            for ii in 1:h
-                if ii != i && grid[ii, j] == val && !black[ii, j]
-                    black[ii, j] = true
-                    changed = true
-                end
-            end
-        end
-    end
-    return changed
-end
+function is_white_connected(is_blacked::Matrix{Bool})::Bool
+    n, m = size(is_blacked)
+    visited = falses(n, m)
 
-# Détecte et noircit automatiquement si un chiffre apparaît ≥2 fois et seul 1 peut rester
-function resolve_duplicates(grid::Matrix{Int}, black::Matrix{Bool})
-    h, w = size(grid)
-    changed = false
-
-    function inbounds(i, j)
-        return 1 ≤ i ≤ h && 1 ≤ j ≤ w
-    end
-
-    function can_black(i, j, black, h, w)
-        for (di, dj) in ((0, 1), (1, 0), (0, -1), (-1, 0))
-            ni, nj = i + di, j + dj
-            if 1 ≤ ni ≤ h && 1 ≤ nj ≤ w && black[ni, nj]
-                return false
-            end
-        end
-        return true
-    end
-
-
-    # Lignes
-    for i in 1:h
-        counts = Dict{Int, Vector{Int}}()
-        for j in 1:w
-            val = grid[i, j]
-            push!(get!(counts, val, Int[]), j)
-        end
-        for (val, js) in counts
-            visibles = filter(j -> !black[i, j], js)
-            if length(visibles) > 1
-                for j in visibles[2:end]
-                    if can_black(i, j, black, h, w)
-                        black[i, j] = true
-                        changed = true
-                    end
-
-                end
-            end
-        end
-    end
-
-    # Colonnes
-    for j in 1:w
-        counts = Dict{Int, Vector{Int}}()
-        for i in 1:h
-            val = grid[i, j]
-            push!(get!(counts, val, Int[]), i)
-        end
-        for (val, is) in counts
-            visibles = filter(i -> !black[i, j], is)
-            if length(visibles) > 1
-                for i in visibles[2:end]
-                    if can_black(i, j, black, h, w)
-                        black[i, j] = true
-                        changed = true
-                    end
-                end
-            end
-        end
-    end
-
-    return changed
-end
-
-
-# Flood-fill pour vérifier connexité des blancs
-function flood_fill(grid, black)
-    h, w = size(grid)
-    visited = fill(false, h, w)
-    found = false
-    for i in 1:h, j in 1:w
-        if !black[i, j]
-            queue = [(i, j)]
-            visited[i, j] = true
-            found = true
+    # Trouver un point blanc de départ
+    start = nothing
+    for i in 1:n, j in 1:m
+        if !is_blacked[i, j]
+            start = (i, j)
             break
         end
     end
-    if !found
+    if start === nothing
         return false
     end
 
+    # BFS
+    queue = [start]
+    visited[start...] = true
     while !isempty(queue)
-        (ci, cj) = popfirst!(queue)
-        for (di, dj) in ((0,1), (1,0), (0,-1), (-1,0))
-            ni, nj = ci + di, cj + dj
-            if inbounds(ni, nj, h, w) && !black[ni, nj] && !visited[ni, nj]
+        i, j = pop!(queue)
+        for (di, dj) in ((1,0), (-1,0), (0,1), (0,-1))
+            ni, nj = i + di, j + dj
+            if 1 ≤ ni ≤ n && 1 ≤ nj ≤ m && !is_blacked[ni, nj] && !visited[ni, nj]
                 visited[ni, nj] = true
                 push!(queue, (ni, nj))
             end
         end
     end
 
-    # Vérifie s'il reste des blancs non visités → ils sont isolés
-    for i in 1:h, j in 1:w
-        if !black[i, j] && !visited[i, j]
-            println("Erreur: case blanche isolée à ($i,$j)")
+    # Vérifie que toutes les cases blanches sont visitées
+    for i in 1:n, j in 1:m
+        if !is_blacked[i, j] && !visited[i, j]
             return false
         end
     end
     return true
 end
 
-# Boucle principale de résolution simple
-function solveByHeuristic(grid::Matrix{Int64})
-    h, w = size(grid)
-    #visited = fill(false, h, w)
-    black = fill(false, h, w)
-    isOptimal = true
-    iteration = 0
-    while true
-        iteration += 1
-        println("Itération $iteration...")
-        changed = false
-        changed |= resolve_duplicates(grid, black)
-        changed |= propagate_blanks(grid, black)
-        if !changed
-            break
-        end
-    end
-
-    if !validate_no_adjacent_blacks(black)
-        println("Grille invalide (noirs adjacents)")
-        isOptimal = false
-    elseif !flood_fill(grid, black)
-        println("Grille invalide (blancs non connectés)")
-        isOptimal = false
-
-    else
-        println("Grille valide")
-    end
-
-    return black,isOptimal
-end
 
 function print_black_only(black::Matrix{Bool})
     h, w = size(black)
