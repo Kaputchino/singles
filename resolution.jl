@@ -170,10 +170,11 @@ function solveDataSet()
                         # Solve it and get the results
                         solved_blacked,isOptimal = solveByHeuristic(mat)
                         println("nothing crash that far")
+                        resolutionTime = time() - startingTime
+
                         writeSolution(outputFile,mat,solved_blacked,isOptimal, resolutionTime)
                         println("write didn't crash the whole program YEAH")
                         # Stop the chronometer
-                        resolutionTime = time() - startingTime
                         
                     end
 
