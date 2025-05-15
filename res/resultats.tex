@@ -1,0 +1,77 @@
+\documentclass{article}
+
+\usepackage[french]{babel}
+\usepackage [utf8] {inputenc} % utf-8 / latin1 
+\usepackage{multicol}
+
+\setlength{\hoffset}{-18pt}
+\setlength{\oddsidemargin}{0pt} % Marge gauche sur pages impaires
+\setlength{\evensidemargin}{9pt} % Marge gauche sur pages paires
+\setlength{\marginparwidth}{54pt} % Largeur de note dans la marge
+\setlength{\textwidth}{481pt} % Largeur de la zone de texte (17cm)
+\setlength{\voffset}{-18pt} % Bon pour DOS
+\setlength{\marginparsep}{7pt} % Séparation de la marge
+\setlength{\topmargin}{0pt} % Pas de marge en haut
+\setlength{\headheight}{13pt} % Haut de page
+\setlength{\headsep}{10pt} % Entre le haut de page et le texte
+\setlength{\footskip}{27pt} % Bas de page + séparation
+\setlength{\textheight}{668pt} % Hauteur de la zone de texte (25cm)
+
+\begin{document}
+\begin{center}
+\renewcommand{\arraystretch}{1.4} 
+ \begin{tabular}{lrrrr}
+	\hline
+ & \multicolumn{2}{c}{\textbf{cplex}} & \multicolumn{2}{c}{\textbf{heuristique}}\\
+\textbf{Instance}  & \textbf{Temps (s)} & \textbf{Optimal ?}  & \textbf{Temps (s)} & \textbf{Optimal ?} \\\hline
+
+i\_5x5\_20pct\_1\_2025-05-15\_14-39-10.733.txt & 0.012999773 & 
+$\times$
+$\times$
+ & 7.953000069 & 
+\\
+i\_5x5\_20pct\_1\_2025-05-15\_15-01-32.710.txt & 0.012999773 & 
+$\times$
+$\times$
+ & 30.001999855 & 
+\\
+i\_5x5\_20pct\_2\_2025-05-15\_15-01-32.713.txt & 0.001999855 & 
+$\times$
+$\times$
+ & 0.000999928 & 
+$\times$
+$\times$
+\\
+i\_5x5\_20pct\_3\_2025-05-15\_15-01-32.714.txt & 0.002000093 & 
+$\times$
+$\times$
+ & 30.001999855 & 
+\\
+i\_5x5\_20pct\_4\_2025-05-15\_15-01-32.715.txt & 0.002000093 & 
+$\times$
+$\times$
+ & 30.001999855 & 
+\\
+instance\_2025-05-14\_22-48-02.117.txt & 0.026000023 & 
+ & 30.003000021 & 
+\\
+instance\_2025-05-14\_22-48-02.119.txt & 0.001999855 & 
+$\times$
+$\times$
+ & 30.000999928 & 
+\\
+instance\_2025-05-14\_22-48-02.120.txt & 0.001999855 & 
+$\times$
+$\times$
+ & 30.002000093 & 
+\\
+test2.txt & 0.002000093 & 
+$\times$
+$\times$
+ & 30.003999949 & 
+\\
+\hline\end{tabular}
+\end{center}
+
+
+\end{document}

@@ -1,0 +1,8 @@
+1 2 5 3 4
+X 5 X 1 X
+2 X 1 4 5
+5 1 4 2 3
+X 4 3 5 1
+
+Temps de résolution : 0.002000093460083008
+Statut : true

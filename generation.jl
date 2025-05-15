@@ -21,7 +21,6 @@ end
 function modifyMatrixNTimes(matrix::Matrix{Int}, y::Int)
     rows, cols = size(matrix)
 
-    # Coins à exclure
     modified_positions = Set{Tuple{Int, Int}}()
 
     for attempt in 1:y
