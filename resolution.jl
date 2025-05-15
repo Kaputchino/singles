@@ -170,7 +170,8 @@ function solveDataSet()
                         println("In file resolution.jl, in method solveDataSet(), TODO: fix heuristicSolve() arguments and returned values")
                         
                         # Solve it and get the results
-                        solved_blacked,isOptimal = solveByHeuristic(mat)
+                        solved_blacked, isOptimal = solveByGreedyScoredHeuristic(mat)
+
                         println("nothing crash that far")
                         resolutionTime = time() - startingTime
 
@@ -214,37 +215,80 @@ end
 
 
 
-function solveByHeuristic(grid::Matrix{Int64})::Tuple{Matrix{Bool}, Bool}
+function solveByHeuristic(grid::Matrix{Int64}; max_seconds::Float64 = 2.0)::Tuple{Matrix{Bool}, Bool}
     n, m = size(grid)
-    is_blacked = fill(false, n, m)
-    has_solution = backtrack!(grid, is_blacked)
+    is_blacked = fill(false, n, m)  # force Matrix{Bool}
+
+    println("search for a solution...")
+
+    start_time = time()
+    max_seconds = max_seconds
+    has_solution = backtrack!(grid, is_blacked, start_time, max_seconds)
+
     return is_blacked, has_solution
 end
 
-function backtrack!(grid::Matrix{Int64}, is_blacked::Matrix{Bool})::Bool
-    if !has_duplicates(grid, is_blacked) &&
-       is_valid_black(is_blacked) &&
-       is_white_connected(is_blacked)
-        return true
+
+function backtrack!(
+    grid::Matrix{Int64},
+    is_blacked::Matrix{Bool},
+    start_time::Float64,
+    max_seconds::Float64
+)::Bool
+    if (time() - start_time) > max_seconds
+        println("⏱️ Temps limite dépassé.")
+        return false
     end
+    println("⏎ backtrack call: time = $(round(time() - start_time, digits=2))s")
 
     n, m = size(grid)
+
+    # Construire une liste des cases avec doublons
+    score = Dict{Tuple{Int, Int}, Int}()
     for i in 1:n, j in 1:m
         if is_blacked[i, j]
             continue
         end
-        if has_duplicate_at(grid, is_blacked, i, j)
-            is_blacked[i, j] = true
-            if is_valid_black(is_blacked) && is_white_connected(is_blacked)
-                if backtrack!(grid, is_blacked)
-                    return true
-                end
-            end
-            is_blacked[i, j] = false
+
+        val = grid[i, j]
+        row_dupes = count(k -> k != j && grid[i, k] == val && !is_blacked[i, k], 1:m)
+        col_dupes = count(k -> k != i && grid[k, j] == val && !is_blacked[k, j], 1:n)
+
+        total_dupes = row_dupes + col_dupes
+        if total_dupes > 0
+            score[(i, j)] = total_dupes
         end
     end
+
+    # ✅ Si plus aucun doublon, tester la validité finale
+    if isempty(score)
+        return is_valid_black(is_blacked) && is_white_connected(is_blacked)
+    end
+
+    # Trier les cases à essayer
+    sorted_cells = sort(collect(keys(score)), by = pos -> -score[pos])
+
+    for (i, j) in sorted_cells
+        # 🟤 Essayer en noir
+        is_blacked[i, j] = true
+        if is_valid_black(is_blacked) && is_white_connected(is_blacked)
+            if backtrack!(grid, is_blacked, start_time, max_seconds)
+                return true
+            end
+        end
+        is_blacked[i, j] = false
+
+        # ⚪ Essayer en blanc
+        if backtrack!(grid, is_blacked, start_time, max_seconds)
+            return true
+        end
+
+        return false  # Aucun des deux choix n’a fonctionné
+    end
+
     return false
 end
+
 
 function has_duplicates(grid::Matrix{Int64}, is_blacked::Matrix{Bool})::Bool
     n, m = size(grid)
@@ -352,4 +396,137 @@ function print_black_only(black::Matrix{Bool})
         end
         println()
     end
+end
+
+function solveByGreedyScoredHeuristic(grid::Matrix{Int})::Tuple{Matrix{Bool}, Bool}
+    n, m = size(grid)
+    is_blacked = fill(false, n, m)
+
+    println("🚀 Heuristique gloutonne avec score en cours...")
+
+    while has_duplicates(grid, is_blacked)
+        candidates = []
+
+        for i in 1:n, j in 1:m
+            if is_blacked[i, j]
+                continue
+            end
+
+            if has_duplicate_at(grid, is_blacked, i, j)
+                score = compute_black_score(grid, is_blacked, i, j)
+                push!(candidates, ((i, j), score))
+            end
+        end
+
+        if isempty(candidates)
+            println("🛑 Aucun candidat restant.")
+            return finish_with_possible_rollback(grid, is_blacked)
+        end
+
+        # Trier par score croissant
+        sort!(candidates, by = x -> x[2])
+        placed = false
+
+        for ((i, j), _) in candidates
+            is_blacked[i, j] = true
+            if is_valid_black(is_blacked) && is_white_connected(is_blacked)
+                println("🔲 Case noircie intelligemment en ($i,$j)")
+                placed = true
+                break
+            else
+                is_blacked[i, j] = false
+            end
+        end
+
+        if !placed
+            println("🛑 Aucun placement possible sans violation.")
+            return finish_with_possible_rollback(grid, is_blacked)
+        end
+    end
+
+    println("🧪 Fin de l’heuristique, vérification...")
+
+    return finish_with_possible_rollback(grid, is_blacked)
+end
+
+function compute_black_score(grid::Matrix{Int}, is_blacked::Matrix{Bool}, i::Int, j::Int)::Int
+    val = grid[i, j]
+    n, m = size(grid)
+
+    row_conflicts = count(k -> k != j && grid[i, k] == val && !is_blacked[i, k], 1:m)
+    col_conflicts = count(k -> k != i && grid[k, j] == val && !is_blacked[k, j], 1:n)
+
+    white_neighbors = 0
+    for (di, dj) in ((-1,0), (1,0), (0,-1), (0,1))
+        ni, nj = i + di, j + dj
+        if 1 ≤ ni ≤ n && 1 ≤ nj ≤ m && !is_blacked[ni, nj]
+            white_neighbors += 1
+        end
+    end
+
+    return (row_conflicts + col_conflicts) * 10 - white_neighbors
+end
+
+function attempt_rollback(grid::Matrix{Int}, is_blacked::Matrix{Bool})::Bool
+    black_positions = [(i, j) for i in 1:size(grid,1), j in 1:size(grid,2) if is_blacked[i, j]]
+
+    println("↩️ Tentative rollback simple sur $(length(black_positions)) cases...")
+
+    for (i, j) in black_positions
+        is_blacked[i, j] = false
+        if is_valid_black(is_blacked) && is_white_connected(is_blacked) && !has_duplicates(grid, is_blacked)
+            println("✅ Rollback simple réussi en supprimant ($i,$j)")
+            return true
+        end
+        is_blacked[i, j] = true
+    end
+    println("❌ Rollback simple échoué.")
+    return false
+end
+
+function attempt_double_rollback(grid::Matrix{Int}, is_blacked::Matrix{Bool})::Bool
+    black_positions = [(i, j) for i in 1:size(grid,1), j in 1:size(grid,2) if is_blacked[i, j]]
+
+    println("↩️ Tentative rollback double sur $(length(black_positions)) cases...")
+
+    for i1 in 1:length(black_positions)
+        for i2 in i1+1:length(black_positions)
+            (x1, y1) = black_positions[i1]
+            (x2, y2) = black_positions[i2]
+
+            is_blacked[x1, y1] = false
+            is_blacked[x2, y2] = false
+
+            if is_valid_black(is_blacked) && is_white_connected(is_blacked) && !has_duplicates(grid, is_blacked)
+                println("✅ Rollback double réussi en retirant ($x1,$y1) et ($x2,$y2)")
+                return true
+            end
+
+            is_blacked[x1, y1] = true
+            is_blacked[x2, y2] = true
+        end
+    end
+
+    println("❌ Rollback double échoué.")
+    return false
+end
+
+function finish_with_possible_rollback(grid::Matrix{Int}, is_blacked::Matrix{Bool})::Tuple{Matrix{Bool}, Bool}
+    if is_valid_black(is_blacked) && is_white_connected(is_blacked) && !has_duplicates(grid, is_blacked)
+        println("✅ Solution valide.")
+        return is_blacked, true
+    end
+
+    println("🧪 Tentative de rollback simple (final)...")
+    if attempt_rollback(grid, is_blacked)
+        return is_blacked, true
+    end
+
+    println("🧪 Tentative de rollback double (final)...")
+    if attempt_double_rollback(grid, is_blacked)
+        return is_blacked, true
+    end
+
+    println("❌ Aucune solution valide trouvée après tous les rollbacks.")
+    return is_blacked, false
 end

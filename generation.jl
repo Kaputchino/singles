@@ -22,7 +22,6 @@ function modifyMatrixNTimes(matrix::Matrix{Int}, y::Int)
     rows, cols = size(matrix)
 
     # Coins à exclure
-    corners = Set([(1,1), (1,cols), (rows,1), (rows,cols)])
     modified_positions = Set{Tuple{Int, Int}}()
 
     for attempt in 1:y
@@ -33,7 +32,7 @@ function modifyMatrixNTimes(matrix::Matrix{Int}, y::Int)
             pos = (i, j)
 
             # Exclure les coins et déjà modifiés
-            if pos in corners || pos in modified_positions
+            if pos in modified_positions
                 continue
             end
 
@@ -106,7 +105,7 @@ Remark: a grid is generated only if the corresponding output file does not alrea
 function generateDataSet(
     n::Int = 5,
     density::Float64 = 0.2,
-    count::Int = 10,
+    count::Int = 4,
     folder::String = "./data/"
 )
     # Crée le dossier s’il n'existe pas
